@@ -24,6 +24,7 @@ export const updateSessionSchema = z.object({
 export const sessionQuerySchema = z.object({
   status: sessionStatusSchema.optional(),
   therapist_id: z.string().optional().transform((val: string | undefined) => (val ? parseInt(val, 10) : undefined)),
+  therapist_name: z.string().optional(),
   page: z.string().optional().transform((val: string | undefined) => (val ? parseInt(val, 10) : 1)),
   limit: z.string().optional().transform((val: string | undefined) => (val ? parseInt(val, 10) : 10)),
 });

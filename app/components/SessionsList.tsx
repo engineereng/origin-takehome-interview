@@ -14,6 +14,7 @@ export default function SessionsList() {
   const [filters, setFilters] = useState<{
     status?: string;
     therapist_id?: string;
+    therapist_name?: string;
     page: number;
     limit: number;
   }>({

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { createSession } from '@/lib/api';
+import { useState, useEffect, useRef } from 'react';
+import { createSession, searchTherapists, searchPatients } from '@/lib/api';
+import type { Therapist, Patient } from '@/lib/types';
 
 interface CreateSessionModalProps {
   onClose: () => void;
@@ -15,11 +16,91 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
     date: '',
     status: 'Scheduled',
   });
+  const [therapistSearch, setTherapistSearch] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [showTherapistDropdown, setShowTherapistDropdown] = useState(false);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const therapistRef = useRef<HTMLDivElement>(null);
+  const patientRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (therapistRef.current && !therapistRef.current.contains(event.target as Node)) {
+        setShowTherapistDropdown(false);
+      }
+      if (patientRef.current && !patientRef.current.contains(event.target as Node)) {
+        setShowPatientDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchTherapists = async () => {
+      if (therapistSearch.trim()) {
+        try {
+          const results = await searchTherapists(therapistSearch);
+          setTherapists(results);
+          setShowTherapistDropdown(true);
+        } catch (err) {
+          console.error('Error searching therapists:', err);
+        }
+      } else {
+        setTherapists([]);
+        setShowTherapistDropdown(false);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchTherapists, 300);
+    return () => clearTimeout(timeoutId);
+  }, [therapistSearch]);
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      if (patientSearch.trim()) {
+        try {
+          const results = await searchPatients(patientSearch);
+          setPatients(results);
+          setShowPatientDropdown(true);
+        } catch (err) {
+          console.error('Error searching patients:', err);
+        }
+      } else {
+        setPatients([]);
+        setShowPatientDropdown(false);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchPatients, 300);
+    return () => clearTimeout(timeoutId);
+  }, [patientSearch]);
+
+  const handleTherapistSelect = (therapist: Therapist) => {
+    setFormData({ ...formData, therapist_id: therapist.id.toString() });
+    setTherapistSearch(therapist.name);
+    setShowTherapistDropdown(false);
+  };
+
+  const handlePatientSelect = (patient: Patient) => {
+    setFormData({ ...formData, patient_id: patient.id.toString() });
+    setPatientSearch(patient.name);
+    setShowPatientDropdown(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.therapist_id || !formData.patient_id) {
+      setError('Please select both a therapist and a patient');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -58,32 +139,92 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="therapist_id" className="block text-sm font-medium text-gray-700 mb-1">
-              Therapist ID
+          <div ref={therapistRef} className="relative">
+            <label htmlFor="therapist" className="block text-sm font-medium text-gray-700 mb-1">
+              Therapist
             </label>
             <input
-              id="therapist_id"
-              type="number"
+              id="therapist"
+              type="text"
               required
-              value={formData.therapist_id}
-              onChange={(e) => setFormData({ ...formData, therapist_id: e.target.value })}
+              value={therapistSearch}
+              onChange={(e) => {
+                setTherapistSearch(e.target.value);
+                setFormData({ ...formData, therapist_id: '' });
+              }}
+              onFocus={() => {
+                if (therapistSearch.trim()) {
+                  setShowTherapistDropdown(true);
+                }
+              }}
+              placeholder="Search for a therapist..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {showTherapistDropdown && therapists.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                {therapists.map((therapist) => (
+                  <button
+                    key={therapist.id}
+                    type="button"
+                    onClick={() => handleTherapistSelect(therapist)}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                  >
+                    <div className="font-medium">{therapist.name}</div>
+                    {therapist.specialty && (
+                      <div className="text-sm text-gray-500">{therapist.specialty}</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+            {formData.therapist_id && !therapistSearch && (
+              <input type="hidden" value={formData.therapist_id} />
+            )}
           </div>
 
-          <div>
-            <label htmlFor="patient_id" className="block text-sm font-medium text-gray-700 mb-1">
-              Patient ID
+          <div ref={patientRef} className="relative">
+            <label htmlFor="patient" className="block text-sm font-medium text-gray-700 mb-1">
+              Patient
             </label>
             <input
-              id="patient_id"
-              type="number"
+              id="patient"
+              type="text"
               required
-              value={formData.patient_id}
-              onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
+              value={patientSearch}
+              onChange={(e) => {
+                setPatientSearch(e.target.value);
+                setFormData({ ...formData, patient_id: '' });
+              }}
+              onFocus={() => {
+                if (patientSearch.trim()) {
+                  setShowPatientDropdown(true);
+                }
+              }}
+              placeholder="Search for a patient..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {showPatientDropdown && patients.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                {patients.map((patient) => (
+                  <button
+                    key={patient.id}
+                    type="button"
+                    onClick={() => handlePatientSelect(patient)}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                  >
+                    <div className="font-medium">{patient.name}</div>
+                    {patient.dob && (
+                      <div className="text-sm text-gray-500">
+                        DOB: {new Date(patient.dob).toLocaleDateString()}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+            {formData.patient_id && !patientSearch && (
+              <input type="hidden" value={formData.patient_id} />
+            )}
           </div>
 
           <div>

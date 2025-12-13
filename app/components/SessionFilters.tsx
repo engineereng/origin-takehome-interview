@@ -1,16 +1,70 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
+import { searchTherapists } from '@/lib/api';
+import type { Therapist } from '@/lib/types';
+
 interface SessionFiltersProps {
   filters: {
     status?: string;
     therapist_id?: string;
+    therapist_name?: string;
     page: number;
     limit: number;
   };
-  onFilterChange: (filters: { status?: string; therapist_id?: string }) => void;
+  onFilterChange: (filters: { status?: string; therapist_id?: string; therapist_name?: string }) => void;
 }
 
 export default function SessionFilters({ filters, onFilterChange }: SessionFiltersProps) {
+  const [therapistSearch, setTherapistSearch] = useState(filters.therapist_name || '');
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchTherapists = async () => {
+      if (therapistSearch.trim()) {
+        try {
+          const results = await searchTherapists(therapistSearch);
+          setTherapists(results);
+          setShowDropdown(true);
+        } catch (err) {
+          console.error('Error searching therapists:', err);
+        }
+      } else {
+        setTherapists([]);
+        setShowDropdown(false);
+        onFilterChange({ therapist_name: undefined, therapist_id: undefined });
+      }
+    };
+
+    const timeoutId = setTimeout(fetchTherapists, 300);
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [therapistSearch]);
+
+  const handleTherapistSelect = (therapist: Therapist) => {
+    setTherapistSearch(therapist.name);
+    setShowDropdown(false);
+    onFilterChange({ therapist_name: therapist.name, therapist_id: undefined });
+  };
+
+  const handleClear = () => {
+    setTherapistSearch('');
+    onFilterChange({ status: undefined, therapist_id: undefined, therapist_name: undefined });
+  };
+
   return (
     <div className="mb-4 flex gap-4 items-end">
       <div className="flex-1">
@@ -31,25 +85,47 @@ export default function SessionFilters({ filters, onFilterChange }: SessionFilte
         </select>
       </div>
 
-      <div className="flex-1">
+      <div ref={dropdownRef} className="flex-1 relative">
         <label htmlFor="therapist" className="block text-sm font-medium text-gray-700 mb-1">
-          Therapist ID
+          Therapist
         </label>
         <input
           id="therapist"
-          type="number"
-          value={filters.therapist_id || ''}
-          onChange={(e) =>
-            onFilterChange({ therapist_id: e.target.value || undefined })
-          }
-          placeholder="Filter by therapist ID"
+          type="text"
+          value={therapistSearch}
+          onChange={(e) => {
+            setTherapistSearch(e.target.value);
+          }}
+          onFocus={() => {
+            if (therapistSearch.trim()) {
+              setShowDropdown(true);
+            }
+          }}
+          placeholder="Search by therapist name..."
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        {showDropdown && therapists.length > 0 && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            {therapists.map((therapist) => (
+              <button
+                key={therapist.id}
+                type="button"
+                onClick={() => handleTherapistSelect(therapist)}
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+              >
+                <div className="font-medium">{therapist.name}</div>
+                {therapist.specialty && (
+                  <div className="text-sm text-gray-500">{therapist.specialty}</div>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {(filters.status || filters.therapist_id) && (
+      {(filters.status || filters.therapist_name) && (
         <button
-          onClick={() => onFilterChange({ status: undefined, therapist_id: undefined })}
+          onClick={handleClear}
           className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
         >
           Clear Filters
