@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { searchTherapists } from '@/lib/api';
 import type { Therapist } from '@/lib/types';
+import SearchableDropdown from './SearchableDropdown';
 
 interface SessionFiltersProps {
   filters: {
@@ -17,47 +18,22 @@ interface SessionFiltersProps {
 
 export default function SessionFilters({ filters, onFilterChange }: SessionFiltersProps) {
   const [therapistSearch, setTherapistSearch] = useState(filters.therapist_name || '');
-  const [therapists, setTherapists] = useState<Therapist[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Sync local state with filters when they change externally
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const fetchTherapists = async () => {
-      if (therapistSearch.trim()) {
-        try {
-          const results = await searchTherapists(therapistSearch);
-          setTherapists(results);
-          setShowDropdown(true);
-        } catch (err) {
-          console.error('Error searching therapists:', err);
-        }
-      } else {
-        setTherapists([]);
-        setShowDropdown(false);
-        onFilterChange({ therapist_name: undefined, therapist_id: undefined });
-      }
-    };
-
-    const timeoutId = setTimeout(fetchTherapists, 300);
-    return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [therapistSearch]);
+    setTherapistSearch(filters.therapist_name || '');
+  }, [filters.therapist_name]);
 
   const handleTherapistSelect = (therapist: Therapist) => {
     setTherapistSearch(therapist.name);
-    setShowDropdown(false);
     onFilterChange({ therapist_name: therapist.name, therapist_id: undefined });
+  };
+
+  const handleTherapistSearchChange = (value: string) => {
+    setTherapistSearch(value);
+    if (!value.trim()) {
+      onFilterChange({ therapist_name: undefined, therapist_id: undefined });
+    }
   };
 
   const handleClear = () => {
@@ -85,42 +61,26 @@ export default function SessionFilters({ filters, onFilterChange }: SessionFilte
         </select>
       </div>
 
-      <div ref={dropdownRef} className="flex-1 relative">
-        <label htmlFor="therapist" className="block text-sm font-medium text-gray-700 mb-1">
-          Therapist
-        </label>
-        <input
+      <div className="flex-1">
+        <SearchableDropdown<Therapist>
           id="therapist"
-          type="text"
-          value={therapistSearch}
-          onChange={(e) => {
-            setTherapistSearch(e.target.value);
-          }}
-          onFocus={() => {
-            if (therapistSearch.trim()) {
-              setShowDropdown(true);
-            }
-          }}
+          label="Therapist"
           placeholder="Search by therapist name..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={therapistSearch}
+          onValueChange={handleTherapistSearchChange}
+          onSelect={handleTherapistSelect}
+          searchFunction={searchTherapists}
+          renderItem={(therapist) => (
+            <>
+              <div className="font-medium">{therapist.name}</div>
+              {therapist.specialty && (
+                <div className="text-sm text-gray-500">{therapist.specialty}</div>
+              )}
+            </>
+          )}
+          hasSelection={!!(filters.therapist_name && therapistSearch === filters.therapist_name)}
+          getKey={(therapist) => therapist.id}
         />
-        {showDropdown && therapists.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-            {therapists.map((therapist) => (
-              <button
-                key={therapist.id}
-                type="button"
-                onClick={() => handleTherapistSelect(therapist)}
-                className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-              >
-                <div className="font-medium">{therapist.name}</div>
-                {therapist.specialty && (
-                  <div className="text-sm text-gray-500">{therapist.specialty}</div>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {(filters.status || filters.therapist_name) && (

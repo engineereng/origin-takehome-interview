@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { createSession, searchTherapists, searchPatients } from '@/lib/api';
 import type { Therapist, Patient } from '@/lib/types';
+import SearchableDropdown from './SearchableDropdown';
 
 interface CreateSessionModalProps {
   onClose: () => void;
@@ -18,107 +19,39 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
   });
   const [therapistSearch, setTherapistSearch] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
-  const [therapists, setTherapists] = useState<Therapist[]>([]);
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [showTherapistDropdown, setShowTherapistDropdown] = useState(false);
-  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{
     therapist?: string;
     patient?: string;
   }>({});
-  const therapistRef = useRef<HTMLDivElement>(null);
-  const patientRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (therapistRef.current && !therapistRef.current.contains(event.target as Node)) {
-        setShowTherapistDropdown(false);
-      }
-      if (patientRef.current && !patientRef.current.contains(event.target as Node)) {
-        setShowPatientDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const fetchTherapists = async () => {
-      // Don't search if we already have a valid selection
-      if (formData.therapist_id) {
-        setTherapists([]);
-        setShowTherapistDropdown(false);
-        return;
-      }
-
-      if (therapistSearch.trim()) {
-        try {
-          const results = await searchTherapists(therapistSearch);
-          setTherapists(results);
-          setShowTherapistDropdown(true);
-          // Clear error if results found and user selects
-          if (results.length > 0 && fieldErrors.therapist) {
-            setFieldErrors((prev) => ({ ...prev, therapist: undefined }));
-          }
-        } catch (err) {
-          console.error('Error searching therapists:', err);
-        }
-      } else {
-        setTherapists([]);
-        setShowTherapistDropdown(false);
-      }
-    };
-
-    const timeoutId = setTimeout(fetchTherapists, 300);
-    return () => clearTimeout(timeoutId);
-  }, [therapistSearch, formData.therapist_id, fieldErrors.therapist]);
-
-  useEffect(() => {
-    const fetchPatients = async () => {
-      // Don't search if we already have a valid selection
-      if (formData.patient_id) {
-        setPatients([]);
-        setShowPatientDropdown(false);
-        return;
-      }
-
-      if (patientSearch.trim()) {
-        try {
-          const results = await searchPatients(patientSearch);
-          setPatients(results);
-          setShowPatientDropdown(true);
-          // Clear error if results found and user selects
-          if (results.length > 0 && fieldErrors.patient) {
-            setFieldErrors((prev) => ({ ...prev, patient: undefined }));
-          }
-        } catch (err) {
-          console.error('Error searching patients:', err);
-        }
-      } else {
-        setPatients([]);
-        setShowPatientDropdown(false);
-      }
-    };
-
-    const timeoutId = setTimeout(fetchPatients, 300);
-    return () => clearTimeout(timeoutId);
-  }, [patientSearch, formData.patient_id, fieldErrors.patient]);
 
   const handleTherapistSelect = (therapist: Therapist) => {
     setFormData({ ...formData, therapist_id: therapist.id.toString() });
     setTherapistSearch(therapist.name);
-    setShowTherapistDropdown(false);
     setFieldErrors((prev) => ({ ...prev, therapist: undefined }));
   };
 
   const handlePatientSelect = (patient: Patient) => {
     setFormData({ ...formData, patient_id: patient.id.toString() });
     setPatientSearch(patient.name);
-    setShowPatientDropdown(false);
     setFieldErrors((prev) => ({ ...prev, patient: undefined }));
+  };
+
+  const handleTherapistSearchChange = (value: string) => {
+    setTherapistSearch(value);
+    setFormData({ ...formData, therapist_id: '' });
+    if (fieldErrors.therapist) {
+      setFieldErrors((prev) => ({ ...prev, therapist: undefined }));
+    }
+  };
+
+  const handlePatientSearchChange = (value: string) => {
+    setPatientSearch(value);
+    setFormData({ ...formData, patient_id: '' });
+    if (fieldErrors.patient) {
+      setFieldErrors((prev) => ({ ...prev, patient: undefined }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,131 +119,51 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div ref={therapistRef} className="relative">
-            <label htmlFor="therapist" className="block text-sm font-medium text-gray-700 mb-1">
-              Therapist <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="therapist"
-              type="text"
-              required
-              value={therapistSearch}
-              onChange={(e) => {
-                setTherapistSearch(e.target.value);
-                setFormData({ ...formData, therapist_id: '' });
-                if (fieldErrors.therapist) {
-                  setFieldErrors((prev) => ({ ...prev, therapist: undefined }));
-                }
-              }}
-              onFocus={() => {
-                if (therapistSearch.trim()) {
-                  setShowTherapistDropdown(true);
-                }
-              }}
-              onBlur={() => {
-                // Delay to allow dropdown click to register
-                setTimeout(() => setShowTherapistDropdown(false), 200);
-              }}
-              placeholder="Search for a therapist..."
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                fieldErrors.therapist
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:ring-blue-500'
-              }`}
-            />
-            {fieldErrors.therapist && (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.therapist}</p>
+          <SearchableDropdown<Therapist>
+            id="therapist"
+            label="Therapist"
+            placeholder="Search for a therapist..."
+            value={therapistSearch}
+            onValueChange={handleTherapistSearchChange}
+            onSelect={handleTherapistSelect}
+            searchFunction={searchTherapists}
+            renderItem={(therapist) => (
+              <>
+                <div className="font-medium">{therapist.name}</div>
+                {therapist.specialty && (
+                  <div className="text-sm text-gray-500">{therapist.specialty}</div>
+                )}
+              </>
             )}
-            {showTherapistDropdown && therapists.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                {therapists.map((therapist) => (
-                  <button
-                    key={therapist.id}
-                    type="button"
-                    onClick={() => handleTherapistSelect(therapist)}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                  >
-                    <div className="font-medium">{therapist.name}</div>
-                    {therapist.specialty && (
-                      <div className="text-sm text-gray-500">{therapist.specialty}</div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-            {showTherapistDropdown && therapistSearch.trim() && therapists.length === 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-4 text-sm text-gray-500">
-                No therapists found. Please try a different search term.
-              </div>
-            )}
-            {formData.therapist_id && !therapistSearch && (
-              <input type="hidden" value={formData.therapist_id} />
-            )}
-          </div>
+            hasSelection={!!formData.therapist_id}
+            error={fieldErrors.therapist}
+            required
+            getKey={(therapist) => therapist.id}
+          />
 
-          <div ref={patientRef} className="relative">
-            <label htmlFor="patient" className="block text-sm font-medium text-gray-700 mb-1">
-              Patient <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="patient"
-              type="text"
-              required
-              value={patientSearch}
-              onChange={(e) => {
-                setPatientSearch(e.target.value);
-                setFormData({ ...formData, patient_id: '' });
-                if (fieldErrors.patient) {
-                  setFieldErrors((prev) => ({ ...prev, patient: undefined }));
-                }
-              }}
-              onFocus={() => {
-                if (patientSearch.trim()) {
-                  setShowPatientDropdown(true);
-                }
-              }}
-              onBlur={() => {
-                // Delay to allow dropdown click to register
-                setTimeout(() => setShowPatientDropdown(false), 200);
-              }}
-              placeholder="Search for a patient..."
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                fieldErrors.patient
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:ring-blue-500'
-              }`}
-            />
-            {fieldErrors.patient && (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.patient}</p>
+          <SearchableDropdown<Patient>
+            id="patient"
+            label="Patient"
+            placeholder="Search for a patient..."
+            value={patientSearch}
+            onValueChange={handlePatientSearchChange}
+            onSelect={handlePatientSelect}
+            searchFunction={searchPatients}
+            renderItem={(patient) => (
+              <>
+                <div className="font-medium">{patient.name}</div>
+                {patient.dob && (
+                  <div className="text-sm text-gray-500">
+                    DOB: {new Date(patient.dob).toLocaleDateString()}
+                  </div>
+                )}
+              </>
             )}
-            {showPatientDropdown && patients.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                {patients.map((patient) => (
-                  <button
-                    key={patient.id}
-                    type="button"
-                    onClick={() => handlePatientSelect(patient)}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                  >
-                    <div className="font-medium">{patient.name}</div>
-                    {patient.dob && (
-                      <div className="text-sm text-gray-500">
-                        DOB: {new Date(patient.dob).toLocaleDateString()}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-            {showPatientDropdown && patientSearch.trim() && patients.length === 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-4 text-sm text-gray-500">
-                No patients found. Please try a different search term.
-              </div>
-            )}
-            {formData.patient_id && !patientSearch && (
-              <input type="hidden" value={formData.patient_id} />
-            )}
-          </div>
+            hasSelection={!!formData.patient_id}
+            error={fieldErrors.patient}
+            required
+            getKey={(patient) => patient.id}
+          />
 
           <div>
             <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
