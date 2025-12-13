@@ -63,7 +63,7 @@ export default function SessionFilters({ filters, onFilterChange }: SessionFilte
     const value = e.target.value;
     // Convert datetime-local format to ISO string for API
     const isoValue = value ? new Date(value).toISOString() : undefined;
-    
+
     // Validate against date_to if it exists
     if (isoValue && filters.date_to) {
       const fromDate = new Date(isoValue);
@@ -76,7 +76,7 @@ export default function SessionFilters({ filters, onFilterChange }: SessionFilte
     } else {
       setDateRangeError(null);
     }
-    
+
     onFilterChange({ date_from: isoValue });
   };
 
@@ -84,7 +84,7 @@ export default function SessionFilters({ filters, onFilterChange }: SessionFilte
     const value = e.target.value;
     // Convert datetime-local format to ISO string for API
     const isoValue = value ? new Date(value).toISOString() : undefined;
-    
+
     // Validate against date_from if it exists
     if (isoValue && filters.date_from) {
       const fromDate = new Date(filters.date_from);
@@ -97,7 +97,7 @@ export default function SessionFilters({ filters, onFilterChange }: SessionFilte
     } else {
       setDateRangeError(null);
     }
-    
+
     onFilterChange({ date_to: isoValue });
   };
 
