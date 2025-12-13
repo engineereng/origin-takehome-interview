@@ -24,6 +24,10 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    therapist?: string;
+    patient?: string;
+  }>({});
   const therapistRef = useRef<HTMLDivElement>(null);
   const patientRef = useRef<HTMLDivElement>(null);
 
@@ -43,11 +47,22 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
 
   useEffect(() => {
     const fetchTherapists = async () => {
+      // Don't search if we already have a valid selection
+      if (formData.therapist_id) {
+        setTherapists([]);
+        setShowTherapistDropdown(false);
+        return;
+      }
+
       if (therapistSearch.trim()) {
         try {
           const results = await searchTherapists(therapistSearch);
           setTherapists(results);
           setShowTherapistDropdown(true);
+          // Clear error if results found and user selects
+          if (results.length > 0 && fieldErrors.therapist) {
+            setFieldErrors((prev) => ({ ...prev, therapist: undefined }));
+          }
         } catch (err) {
           console.error('Error searching therapists:', err);
         }
@@ -59,15 +74,26 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
 
     const timeoutId = setTimeout(fetchTherapists, 300);
     return () => clearTimeout(timeoutId);
-  }, [therapistSearch]);
+  }, [therapistSearch, formData.therapist_id, fieldErrors.therapist]);
 
   useEffect(() => {
     const fetchPatients = async () => {
+      // Don't search if we already have a valid selection
+      if (formData.patient_id) {
+        setPatients([]);
+        setShowPatientDropdown(false);
+        return;
+      }
+
       if (patientSearch.trim()) {
         try {
           const results = await searchPatients(patientSearch);
           setPatients(results);
           setShowPatientDropdown(true);
+          // Clear error if results found and user selects
+          if (results.length > 0 && fieldErrors.patient) {
+            setFieldErrors((prev) => ({ ...prev, patient: undefined }));
+          }
         } catch (err) {
           console.error('Error searching patients:', err);
         }
@@ -79,30 +105,51 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
 
     const timeoutId = setTimeout(fetchPatients, 300);
     return () => clearTimeout(timeoutId);
-  }, [patientSearch]);
+  }, [patientSearch, formData.patient_id, fieldErrors.patient]);
 
   const handleTherapistSelect = (therapist: Therapist) => {
     setFormData({ ...formData, therapist_id: therapist.id.toString() });
     setTherapistSearch(therapist.name);
     setShowTherapistDropdown(false);
+    setFieldErrors((prev) => ({ ...prev, therapist: undefined }));
   };
 
   const handlePatientSelect = (patient: Patient) => {
     setFormData({ ...formData, patient_id: patient.id.toString() });
     setPatientSearch(patient.name);
     setShowPatientDropdown(false);
+    setFieldErrors((prev) => ({ ...prev, patient: undefined }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.therapist_id || !formData.patient_id) {
+    // Validate fields
+    const errors: { therapist?: string; patient?: string } = {};
+    if (!formData.therapist_id) {
+      if (therapistSearch.trim()) {
+        errors.therapist = 'Please select a therapist from the dropdown';
+      } else {
+        errors.therapist = 'Please search for and select a therapist';
+      }
+    }
+    if (!formData.patient_id) {
+      if (patientSearch.trim()) {
+        errors.patient = 'Please select a patient from the dropdown';
+      } else {
+        errors.patient = 'Please search for and select a patient';
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       setError('Please select both a therapist and a patient');
       return;
     }
 
     setLoading(true);
     setError(null);
+    setFieldErrors({});
 
     try {
       await createSession({
@@ -141,7 +188,7 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
         <form onSubmit={handleSubmit} className="space-y-4">
           <div ref={therapistRef} className="relative">
             <label htmlFor="therapist" className="block text-sm font-medium text-gray-700 mb-1">
-              Therapist
+              Therapist <span className="text-red-500">*</span>
             </label>
             <input
               id="therapist"
@@ -151,15 +198,29 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
               onChange={(e) => {
                 setTherapistSearch(e.target.value);
                 setFormData({ ...formData, therapist_id: '' });
+                if (fieldErrors.therapist) {
+                  setFieldErrors((prev) => ({ ...prev, therapist: undefined }));
+                }
               }}
               onFocus={() => {
                 if (therapistSearch.trim()) {
                   setShowTherapistDropdown(true);
                 }
               }}
+              onBlur={() => {
+                // Delay to allow dropdown click to register
+                setTimeout(() => setShowTherapistDropdown(false), 200);
+              }}
               placeholder="Search for a therapist..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                fieldErrors.therapist
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
             />
+            {fieldErrors.therapist && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.therapist}</p>
+            )}
             {showTherapistDropdown && therapists.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                 {therapists.map((therapist) => (
@@ -177,6 +238,11 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
                 ))}
               </div>
             )}
+            {showTherapistDropdown && therapistSearch.trim() && therapists.length === 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-4 text-sm text-gray-500">
+                No therapists found. Please try a different search term.
+              </div>
+            )}
             {formData.therapist_id && !therapistSearch && (
               <input type="hidden" value={formData.therapist_id} />
             )}
@@ -184,7 +250,7 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
 
           <div ref={patientRef} className="relative">
             <label htmlFor="patient" className="block text-sm font-medium text-gray-700 mb-1">
-              Patient
+              Patient <span className="text-red-500">*</span>
             </label>
             <input
               id="patient"
@@ -194,15 +260,29 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
               onChange={(e) => {
                 setPatientSearch(e.target.value);
                 setFormData({ ...formData, patient_id: '' });
+                if (fieldErrors.patient) {
+                  setFieldErrors((prev) => ({ ...prev, patient: undefined }));
+                }
               }}
               onFocus={() => {
                 if (patientSearch.trim()) {
                   setShowPatientDropdown(true);
                 }
               }}
+              onBlur={() => {
+                // Delay to allow dropdown click to register
+                setTimeout(() => setShowPatientDropdown(false), 200);
+              }}
               placeholder="Search for a patient..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                fieldErrors.patient
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
             />
+            {fieldErrors.patient && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.patient}</p>
+            )}
             {showPatientDropdown && patients.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                 {patients.map((patient) => (
@@ -222,6 +302,11 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
                 ))}
               </div>
             )}
+            {showPatientDropdown && patientSearch.trim() && patients.length === 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-4 text-sm text-gray-500">
+                No patients found. Please try a different search term.
+              </div>
+            )}
             {formData.patient_id && !patientSearch && (
               <input type="hidden" value={formData.patient_id} />
             )}
@@ -229,7 +314,7 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
 
           <div>
             <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-              Date & Time
+              Date & Time <span className="text-red-500">*</span>
             </label>
             <input
               id="date"
