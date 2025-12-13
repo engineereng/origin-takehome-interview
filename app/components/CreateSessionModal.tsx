@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createSession, searchTherapists, searchPatients } from '@/lib/api';
 import type { Therapist, Patient } from '@/lib/types';
 import SearchableDropdown from './SearchableDropdown';
+import { useToast } from '../contexts/ToastContext';
 
 interface CreateSessionModalProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ interface CreateSessionModalProps {
 }
 
 export default function CreateSessionModal({ onClose, onSuccess }: CreateSessionModalProps) {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     therapist_id: '',
     patient_id: '',
@@ -91,9 +93,12 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
         date: new Date(formData.date).toISOString(),
         status: formData.status as any,
       });
+      showToast('Session created successfully', 'success');
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create session');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create session';
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }

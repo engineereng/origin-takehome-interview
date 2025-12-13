@@ -6,8 +6,10 @@ import type { SessionWithRelations } from '@/lib/types';
 import SessionFilters from './SessionFilters';
 import SessionTable from './SessionTable';
 import CreateSessionModal from './CreateSessionModal';
+import { useToast } from '../contexts/ToastContext';
 
 export default function SessionsList() {
+  const { showToast } = useToast();
   const [sessions, setSessions] = useState<SessionWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,9 +50,12 @@ export default function SessionsList() {
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
       await updateSession(id, { status: status as any });
+      showToast(`Session status updated to ${status}`, 'success');
       await fetchSessions();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update session');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update session';
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -60,9 +65,12 @@ export default function SessionsList() {
     }
     try {
       await deleteSession(id);
+      showToast('Session deleted successfully', 'success');
       await fetchSessions();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete session');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete session';
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
     }
   };
 
