@@ -178,6 +178,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(apiError, { status: 400 });
     }
 
+    // Handle database constraint errors (e.g., foreign key violations)
+    if (error && typeof error === 'object' && 'code' in error) {
+      const dbError = error as { code: string; message?: string };
+      if (dbError.code === '23503') {
+        // Foreign key violation
+        const apiError: ApiError = {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid therapist_id or patient_id',
+          },
+        };
+        return NextResponse.json(apiError, { status: 400 });
+      }
+    }
+
     console.error('Error creating session:', error);
     const apiError: ApiError = {
       error: {
