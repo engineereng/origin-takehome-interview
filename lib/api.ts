@@ -1,26 +1,59 @@
 import type {
   SessionWithRelations,
-  CreateSessionInput,
-  UpdateSessionInput,
   PaginatedResponse,
   ApiError,
+  Therapist,
+  Patient,
 } from './types';
+import type { CreateSessionInput, UpdateSessionInput } from './validations';
 
 const API_BASE = '/api/sessions';
 
 export async function getSessions(params?: {
   status?: string;
   therapist_id?: string;
+  therapist_name?: string;
   page?: number;
   limit?: number;
 }): Promise<PaginatedResponse<SessionWithRelations>> {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set('status', params.status);
   if (params?.therapist_id) searchParams.set('therapist_id', params.therapist_id.toString());
+  if (params?.therapist_name) searchParams.set('therapist_name', params.therapist_name);
   if (params?.page) searchParams.set('page', params.page.toString());
   if (params?.limit) searchParams.set('limit', params.limit.toString());
 
   const url = `${API_BASE}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const error: ApiError = await response.json();
+    throw new Error(error.error.message);
+  }
+
+  return response.json();
+}
+
+export async function searchTherapists(search: string = ''): Promise<Therapist[]> {
+  const searchParams = new URLSearchParams();
+  if (search) searchParams.set('search', search);
+
+  const url = `/api/therapists${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const error: ApiError = await response.json();
+    throw new Error(error.error.message);
+  }
+
+  return response.json();
+}
+
+export async function searchPatients(search: string = ''): Promise<Patient[]> {
+  const searchParams = new URLSearchParams();
+  if (search) searchParams.set('search', search);
+
+  const url = `/api/patients${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
   const response = await fetch(url);
 
   if (!response.ok) {

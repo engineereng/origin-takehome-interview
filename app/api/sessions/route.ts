@@ -10,12 +10,13 @@ export async function GET(request: NextRequest) {
     const queryParams = {
       status: searchParams.get('status') || undefined,
       therapist_id: searchParams.get('therapist_id') || undefined,
+      therapist_name: searchParams.get('therapist_name') || undefined,
       page: searchParams.get('page') || '1',
       limit: searchParams.get('limit') || '10',
     };
 
     const validatedParams = sessionQuerySchema.parse(queryParams);
-    const { status, therapist_id, page, limit } = validatedParams;
+    const { status, therapist_id, therapist_name, page, limit } = validatedParams;
     const offset = (page - 1) * limit;
 
     // Build WHERE clause
@@ -35,10 +36,18 @@ export async function GET(request: NextRequest) {
       paramIndex++;
     }
 
+    if (therapist_name) {
+      conditions.push(`t.name ILIKE $${paramIndex}`);
+      values.push(`%${therapist_name}%`);
+      paramIndex++;
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // Get total count
-    const countQuery = `SELECT COUNT(*) FROM sessions s ${whereClause}`;
+    // Get total count - need to join with therapists table if filtering by name
+    const countQuery = therapist_name
+      ? `SELECT COUNT(*) FROM sessions s INNER JOIN therapists t ON s.therapist_id = t.id ${whereClause}`
+      : `SELECT COUNT(*) FROM sessions s ${whereClause}`;
     const countResult = await pool.query(countQuery, values);
     const total = parseInt(countResult.rows[0].count, 10);
 
