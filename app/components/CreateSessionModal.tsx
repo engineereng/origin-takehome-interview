@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createSession, searchTherapists, searchPatients } from '@/lib/api';
-import type { Therapist, Patient } from '@/lib/types';
+import type { Therapist, Patient, SessionStatus } from '@/lib/types';
 import SearchableDropdown from './SearchableDropdown';
 import { useToast } from '../contexts/ToastContext';
 
@@ -91,7 +91,7 @@ export default function CreateSessionModal({ onClose, onSuccess }: CreateSession
         therapist_id: parseInt(formData.therapist_id, 10),
         patient_id: parseInt(formData.patient_id, 10),
         date: new Date(formData.date).toISOString(),
-        status: formData.status as any,
+        status: formData.status as SessionStatus,
       });
       showToast('Session created successfully', 'success');
       onSuccess();

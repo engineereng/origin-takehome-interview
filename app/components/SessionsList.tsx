@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getSessions, updateSession, deleteSession } from '@/lib/api';
-import type { SessionWithRelations } from '@/lib/types';
+import type { SessionWithRelations, SessionStatus } from '@/lib/types';
 import SessionFilters from './SessionFilters';
 import SessionTable from './SessionTable';
 import CreateSessionModal from './CreateSessionModal';
@@ -52,7 +52,7 @@ export default function SessionsList() {
 
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
-      await updateSession(id, { status: status as any });
+      await updateSession(id, { status: status as SessionStatus });
       showToast(`Session status updated to ${status}`, 'success');
       await fetchSessions();
     } catch (err) {
