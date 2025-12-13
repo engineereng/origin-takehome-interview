@@ -25,6 +25,9 @@ export const sessionQuerySchema = z.object({
   status: sessionStatusSchema.optional(),
   therapist_id: z.string().optional().transform((val: string | undefined) => (val ? parseInt(val, 10) : undefined)),
   therapist_name: z.string().optional(),
+  date_from: z.string().optional(),
+  date_to: z.string().optional(),
+  sort_order: z.enum(['ASC', 'DESC']).optional().default('ASC'),
   page: z.string().optional().transform((val: string | undefined) => (val ? parseInt(val, 10) : 1)),
   limit: z.string().optional().transform((val: string | undefined) => (val ? parseInt(val, 10) : 10)),
 });

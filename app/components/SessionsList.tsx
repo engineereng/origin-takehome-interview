@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getSessions, updateSession, deleteSession } from '@/lib/api';
 import type { SessionWithRelations } from '@/lib/types';
 import SessionFilters from './SessionFilters';
@@ -17,23 +17,26 @@ export default function SessionsList() {
     status?: string;
     therapist_id?: string;
     therapist_name?: string;
+    date_from?: string;
+    date_to?: string;
     page: number;
     limit: number;
   }>({
     page: 1,
     limit: 10,
   });
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
   const [pagination, setPagination] = useState({
     total: 0,
     totalPages: 0,
   });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getSessions(filters);
+      const response = await getSessions({ ...filters, sort_order: sortOrder });
       setSessions(response.data);
       setPagination(response.pagination);
     } catch (err) {
@@ -41,11 +44,11 @@ export default function SessionsList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, sortOrder]);
 
   useEffect(() => {
     fetchSessions();
-  }, [filters]);
+  }, [fetchSessions]);
 
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
@@ -128,6 +131,8 @@ export default function SessionsList() {
               sessions={sessions}
               onUpdateStatus={handleUpdateStatus}
               onDelete={handleDelete}
+              sortOrder={sortOrder}
+              onSortToggle={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
             />
 
             <div className="mt-4 flex items-center justify-between">

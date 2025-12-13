@@ -11,12 +11,15 @@ export async function GET(request: NextRequest) {
       status: searchParams.get('status') || undefined,
       therapist_id: searchParams.get('therapist_id') || undefined,
       therapist_name: searchParams.get('therapist_name') || undefined,
+      date_from: searchParams.get('date_from') || undefined,
+      date_to: searchParams.get('date_to') || undefined,
+      sort_order: searchParams.get('sort_order') || 'ASC',
       page: searchParams.get('page') || '1',
       limit: searchParams.get('limit') || '10',
     };
 
     const validatedParams = sessionQuerySchema.parse(queryParams);
-    const { status, therapist_id, therapist_name, page, limit } = validatedParams;
+    const { status, therapist_id, therapist_name, date_from, date_to, sort_order, page, limit } = validatedParams;
     const offset = (page - 1) * limit;
 
     // Build WHERE clause
@@ -42,10 +45,22 @@ export async function GET(request: NextRequest) {
       paramIndex++;
     }
 
+    if (date_from) {
+      conditions.push(`s.date >= $${paramIndex}`);
+      values.push(date_from);
+      paramIndex++;
+    }
+
+    if (date_to) {
+      conditions.push(`s.date <= $${paramIndex}`);
+      values.push(date_to);
+      paramIndex++;
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // Get total count - need to join with therapists table if filtering by name
-    const countQuery = therapist_name
+    // Get total count - need to join with therapists table if filtering by name or date
+    const countQuery = (therapist_name || date_from || date_to)
       ? `SELECT COUNT(*) FROM sessions s INNER JOIN therapists t ON s.therapist_id = t.id ${whereClause}`
       : `SELECT COUNT(*) FROM sessions s ${whereClause}`;
     const countResult = await pool.query(countQuery, values);
@@ -65,7 +80,7 @@ export async function GET(request: NextRequest) {
       INNER JOIN therapists t ON s.therapist_id = t.id
       INNER JOIN patients p ON s.patient_id = p.id
       ${whereClause}
-      ORDER BY s.date ASC
+      ORDER BY s.date ${sort_order}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     values.push(limit, offset);

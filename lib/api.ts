@@ -13,6 +13,9 @@ export async function getSessions(params?: {
   status?: string;
   therapist_id?: string;
   therapist_name?: string;
+  date_from?: string;
+  date_to?: string;
+  sort_order?: 'ASC' | 'DESC';
   page?: number;
   limit?: number;
 }): Promise<PaginatedResponse<SessionWithRelations>> {
@@ -20,6 +23,9 @@ export async function getSessions(params?: {
   if (params?.status) searchParams.set('status', params.status);
   if (params?.therapist_id) searchParams.set('therapist_id', params.therapist_id.toString());
   if (params?.therapist_name) searchParams.set('therapist_name', params.therapist_name);
+  if (params?.date_from) searchParams.set('date_from', params.date_from);
+  if (params?.date_to) searchParams.set('date_to', params.date_to);
+  if (params?.sort_order) searchParams.set('sort_order', params.sort_order);
   if (params?.page) searchParams.set('page', params.page.toString());
   if (params?.limit) searchParams.set('limit', params.limit.toString());
 

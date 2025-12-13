@@ -7,6 +7,8 @@ interface SessionTableProps {
   sessions: SessionWithRelations[];
   onUpdateStatus: (id: number, status: string) => void;
   onDelete: (id: number) => void;
+  sortOrder: 'ASC' | 'DESC';
+  onSortToggle: () => void;
 }
 
 const STATUS_OPTIONS = ['Scheduled', 'Completed', 'Canceled', 'No Show'] as const;
@@ -15,6 +17,8 @@ export default function SessionTable({
   sessions,
   onUpdateStatus,
   onDelete,
+  sortOrder,
+  onSortToggle,
 }: SessionTableProps) {
   const [hoveredStatusId, setHoveredStatusId] = useState<number | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
@@ -83,7 +87,24 @@ export default function SessionTable({
               Patient
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Date & Time
+              <div className="flex items-center gap-2">
+                <span>Date & Time</span>
+                <button
+                  onClick={onSortToggle}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label={sortOrder === 'ASC' ? 'Sort reverse chronologically' : 'Sort chronologically'}
+                >
+                  {sortOrder === 'ASC' ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
