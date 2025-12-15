@@ -26,17 +26,44 @@ export const sessionQuerySchema = z.object({
   therapist_id: z
     .string()
     .optional()
+    .refine((val: string | undefined) => {
+      if (!val) return true;
+      const parsed = parseInt(val, 10);
+      return !isNaN(parsed) && parsed > 0;
+    }, {
+      message: 'therapist_id must be a positive integer',
+    })
     .transform((val: string | undefined) => {
       if (!val) return undefined;
-      const parsed = parseInt(val, 10);
-      return isNaN(parsed) ? undefined : parsed;
-    })
-    .refine((val) => val === undefined || (typeof val === 'number' && val > 0), {
-      message: 'therapist_id must be a positive integer',
+      return parseInt(val, 10);
     }),
   therapist_name: z.string().optional(),
-  date_from: z.string().optional(),
-  date_to: z.string().optional(),
+  date_from: z.string().optional()
+  .refine((val: string | undefined) => {
+    if (!val) return true;
+    const parsed = new Date(val);
+    return !isNaN(parsed.getTime());
+  }, {
+    message: 'date_from must be a validate date',
+  })
+  .transform((val: string | undefined) => {
+    if (!val) return undefined;
+    const parsed = new Date(val);
+    return isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+  }),
+  date_to: z.string().optional()
+  .refine((val: string | undefined) => {
+    if (!val) return true;
+    const parsed = new Date(val);
+    return !isNaN(parsed.getTime());
+  }, {
+    message: 'date_to must be a validate date',
+  })
+  .transform((val: string | undefined) => {
+    if (!val) return undefined;
+    const parsed = new Date(val);
+    return isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+  }),
   sort_order: z.enum(['ASC', 'DESC']).optional().default('ASC'),
   page: z
     .string()
