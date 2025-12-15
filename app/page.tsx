@@ -1,7 +1,19 @@
-import { Suspense } from 'react';
-import SessionsList from './components/SessionsList';
+import { SessionsListWithSuspense } from './components/SessionsListServer';
 
-export default function Home() {
+interface HomeProps {
+  searchParams: {
+    status?: string;
+    therapist_id?: string;
+    therapist_name?: string;
+    date_from?: string;
+    date_to?: string;
+    sort_order?: string;
+    page?: string;
+    limit?: string;
+  };
+}
+
+export default function Home({ searchParams }: HomeProps) {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -10,28 +22,9 @@ export default function Home() {
           <p className="mt-2 text-gray-600">View and manage therapy sessions</p>
         </div>
 
-        <Suspense fallback={<SessionsListSkeleton />}>
-          <SessionsList />
-        </Suspense>
+        <SessionsListWithSuspense searchParams={searchParams} />
       </div>
     </main>
-  );
-}
-
-function SessionsListSkeleton() {
-  return (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-4 py-5 sm:p-6">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="space-y-3">
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
