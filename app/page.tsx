@@ -1,7 +1,7 @@
 import { SessionsListWithSuspense } from './components/SessionsListServer';
 
 interface HomeProps {
-  searchParams: {
+  searchParams: Promise<{
     status?: string;
     therapist_id?: string;
     therapist_name?: string;
@@ -10,10 +10,12 @@ interface HomeProps {
     sort_order?: string;
     page?: string;
     limit?: string;
-  };
+  }>;
 }
 
-export default function Home({ searchParams }: HomeProps) {
+export default async function Home({ searchParams }: HomeProps) {
+  const resolvedSearchParams = await searchParams;
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,7 +24,7 @@ export default function Home({ searchParams }: HomeProps) {
           <p className="mt-2 text-gray-600">View and manage therapy sessions</p>
         </div>
 
-        <SessionsListWithSuspense searchParams={searchParams} />
+        <SessionsListWithSuspense searchParams={resolvedSearchParams} />
       </div>
     </main>
   );
