@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
       const apiError: ApiError = {
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Invalid query parameters',
+          message: error.message || 'Invalid query parameters',
         },
       };
       return NextResponse.json(apiError, { status: 400 });
